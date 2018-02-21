@@ -110,12 +110,12 @@ app.post('/signUp', (req, res) => {
     var password = req.body.pass;
     var name = req.body.name;
 
-    password = decipherPass(email, password);
     password = createPass(email, password);
 
     let user = {
         Email: email,
-        Password: password
+        Password: password,
+        FullName: name
     };
 
     let query = 'INSERT INTO Users SET ?';
@@ -177,25 +177,25 @@ app.post('/login', function (req, res) {
     var email = req.body.email;
     var password = req.body.pass;
 
-    password = decipherPass(email, password);
     password = createPass(email, password);
 
     if (!email || !password) { //SHOULD BE HANDLED IN JS too
         return res.status(401).json({ message: "invalid_credentials" });
     }
 
-    var dbQuery = "select * from Users where Email = ? and Password = ?";
+    var dbQuery = "SELECT * FROM Users WHERE Email = ? AND Password = ?";
     var requestParams = [email, password];
 
-    db.query(dbQuery, requestParams, function (err, user) {
+    db.query(dbQuery, requestParams, function (err, result) {
         
         if (err) {
             return res.status(500).json({ message: "Internal server error" });
         }
 
-        if (user == null) {
+        if (result == null || result == "") {
             return res.status(401).json({ message: "invalid_credentials" });
         }
+        //console.log(result[0].Password);
 
         // valid user, issue them an auth token
         var authToken = uuid();
