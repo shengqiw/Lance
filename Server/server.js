@@ -17,7 +17,7 @@ Description - desc
 Documents - docs (Support not added yet)
 Contact Info (Mobile Number) - contact
 Name - name (Support not added yet)
-Create new post endpoint - Anjali could you describe what the endpoint does and each field means a bit more? thanks -Kenan
+Create new post endpoint - (Anjali)
 ************************
 Content: req.body.Content,
 PostingType: req.body.PostingType,
@@ -396,7 +396,7 @@ app.post('/CreateProfile', (req, res) => {
 function createPass(email, password) {
 
     var i = email.length;
-    var salt = email.substring(i/2, i) + email.substring(0, i/2);
+    var salt = email.substring(i / 2, i) + email.substring(0, i / 2);
 
     const cipher = crypto.createCipher('aes192', salt);
 
@@ -406,10 +406,10 @@ function createPass(email, password) {
     return encrypted;
 }
 
-function decipherPass(email, password) {
+function decipherPass(email, encrypted) {
 
     var i = email.length;
-    var salt = email.substring(i/2, i) + email.substring(0, i/2);
+    var salt = email.substring(i / 2, i) + email.substring(0, i / 2);
 
     const decipher = crypto.createDecipher('aes192', salt);
 
@@ -417,3 +417,88 @@ function decipherPass(email, password) {
     decrypted += decipher.final('utf8');
     return decrypted;
 }
+
+// Endpoint to Logout
+app.post('/logout', function (req, res) {
+
+    var signOut = req.body.signOut;
+    var email = req.body.email;
+
+    if (!signOut) {
+        return res.status(401).json({ message: "invalid_credentials" });
+    }
+
+    var dbQuery = "UPDATE Users SET AuthToken = ?, AuthTokenIssued = ? WHERE Email = ?";
+    var requestParams = [null, null, email];
+
+    db.query(dbQuery, requestParams, function (err, result) {
+        if (err) {
+            return res.status(500).json({ message: "Internal server error" });
+        } else {
+            return res.status(200).json({ message: "Success! User logged out!" });
+        }
+    });
+});
+
+
+// Endpoint to Change Password
+app.post('/changePassword', (req, res) => {
+
+    var email = req.body.email;
+    var currPassword = req.body.oldPass;
+    var newPassword = req.body.newPass;
+
+    let sql = "SELECT Password FROM Users WHERE Email = ?";
+
+    db.query(sql, email, (error, response) => {
+        console.log(response);
+        if (error) {
+            res.send(JSON.stringify({
+                "status": 500,
+                "error": error,
+                "response": null,
+                "message": "Internal server error - Could not check old Password"
+            }));
+        }
+        else {
+            // check if old password is the same as the one in database
+            var matchCurrPass = decipherPass(email, response[0].Password);
+            if (currPassword === matchCurrPass) {
+                console.log("Current password matches");
+
+                newPassword = createPass(email, newPassword);
+                let query = "UPDATE Users SET Password = ? WHERE Email = ?";
+                let params = [newPassword, email];
+
+                // update password
+                db.query(query, params, (error, response) => {
+                    console.log(response);
+                    if (error) {
+                        res.send(JSON.stringify({
+                            "status": 500,
+                            "error": error,
+                            "response": null,
+                            "message": "Internal server error"
+                        }));
+                    }
+                    else {
+                        res.send(JSON.stringify({
+                            "status": 200,
+                            "error": null,
+                            "response": response,
+                            "message": "Success! User Password Changed!"
+                        }));
+                    }
+                });
+            } 
+            else {
+                res.send(JSON.stringify({
+                    "status": 500,
+                    "error": error,
+                    "response": null,
+                    "message": "Current password is not correct"
+                }));
+            }
+        }
+    });
+});
